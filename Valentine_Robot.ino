@@ -1,17 +1,23 @@
 // Valentine's Day Robot Project
-// V1.0
+// V1.0 First releease
+// V1.1 Replaced standard Servo library with ServoTimer2 library, moved servo to pin 3.
+//      Enabled flashing LED eyes during playback
+//      Enabled waving sweep during playback, but it is not working.
+//      Most likely because audio library disables other interrupts during playback, include servo2
 
 #include <SD.h>              // SD Card library
 #include <SPI.h>             // needed for SD card?
 #include <TMRpcm.h>          // audio file player, unsigned 8-bit PCM, 8000/11025/16000kHz, mono
-                             // uses timer1 (on UNO pins PWM 9, 10)
-#include <Servo.h> 
+                             // uses timer1 (the only 16-bit timer on UNO, using pins PWM 9, 10)
+                             // https://github.com/TMRh20/TMRpcm
+#include <ServoTimer2.h>     // uses timer2 (8 bit timer, pin 3 and/or 11
+                             // https://github.com/jkloo/SWIM-R/tree/master/SW/Arduino/libraries/ServoTimer2
 
 /**** DIGITAL I/O ****/
 // Arduino Uno TX line     0
 // Arduino Uno RX line     1
-#define servo1_pin         2  // Output
-#define eye_led2           3  // Output  (Uno Timer2 PWM pin)
+#define eye_led2           2  // Output
+#define servo1_pin         3  // Output  (Uno Timer2 PWM pin)
 #define SD_ChipSelectPin   4  // Output using digital pin 4 on arduino uno
 #define eye_led1           5  // Output  (Uno Timer0 PWM pin)
 //                         6             (Uno Timer0 PWM pin)
@@ -32,18 +38,21 @@
 // A5
 
 /**** TIMERS       ****/
-//long previousMillis = 0;        // will store last time LED was updated
-//long interval = 500;           // interval at which to blink (milliseconds)
+long previousMillis = 0;        // will store last time LED was updated
+long interval = 350;           // interval at which to blink (milliseconds)
 
 /**** VARIABLES ****/
 int sensor1State = 0;
 int ledState = LOW;             // ledState used to set the LEDs
-int pos = 70;                   // initial and then current servo position 
+int pos = 70;                   // initial and then current servo position (degrees)
+int pos_ms = 1200;              // initial and then current servo position (ms)
 boolean servo_direction_up = 1; // keep track of which direction the servo is moving
+#define MIN_PULSE  750
+#define MAX_PULSE  2250
 
 /**** OBJECTS   ****/
 TMRpcm tmrpcm;   // create an object for use in this sketch
-Servo myservo;  // create servo object to control a servo 
+ServoTimer2 myservo;  // create servo object to control a servo 
 
 void setup(){
   tmrpcm.speakerPin = speaker_output; //5,6,11 or 46 on Mega, 9 on Uno, Nano, etc
@@ -52,7 +61,7 @@ void setup(){
   pinMode(sensor1, INPUT);  // 
 
   myservo.attach(servo1_pin);  // attaches the servo on pin 9 to the servo object 
-  myservo.write(pos);
+  myservo.write(pos_ms);
   
   Serial.begin(9600);
   if (!SD.begin(SD_ChipSelectPin)) {  // see if the card is present and can be initialized:
@@ -69,61 +78,67 @@ void setup(){
 
 void loop(){  
 
-    if(Serial.available()){    
-    if(Serial.read() == 'p'){ //send the letter p over the serial monitor to start playback
-      digitalWrite(eye_led1, HIGH); 
-      digitalWrite(eye_led2, HIGH); 
-      tmrpcm.play("happy2.wav");
-    }
-  }
+//    if(Serial.available()){    
+//      if(Serial.read() == 'p'){ //send the letter p over the serial monitor to start playback
+//        digitalWrite(eye_led1, HIGH); 
+//        digitalWrite(eye_led2, HIGH); 
+//        tmrpcm.play("happy2.wav");
+//      }
+//    }
 
   if(tmrpcm.isPlaying()==0){                // If sound is not playing, continue through this loop
-    tmrpcm.disable();
+    //tmrpcm.disable();
     digitalWrite(eye_led1, LOW); 
     digitalWrite(eye_led2, LOW);
-    myservo.write(45);
+    //myservo.write(1000);
     sensor1State = digitalRead(sensor1);
     if(sensor1State == 0){                 //  If the sensor indicates blocking, then start sound/lights
       digitalWrite(eye_led1, HIGH); 
       digitalWrite(eye_led2, HIGH); 
-      myservo.write(135);
+      myservo.write(2000);
+      delay(500);
       tmrpcm.play("happy2.wav");
-//TESTING
-//      unsigned long currentMillis = millis();
-//      if(currentMillis - previousMillis > interval) {
-//        // save the last time you blinked the LED 
-//        previousMillis = currentMillis;   
-//        // if the LED is off turn it on and vice-versa:
-//        if (ledState == LOW)
-//          ledState = HIGH;
-//        else
-//          ledState = LOW;
-//        // set the LED with the ledState of the variable:
-//        digitalWrite(eye_led1, ledState);
-//        digitalWrite(eye_led2, ledState);
-//      }
-//TESTING  
-//      if (servo_direction_up == 1) {   // Servo direction is up for this case
-//        if(pos >=180){                 //    and it hit the upper limit
-//          servo_direction_up = 0;      //    reverse the direction to go down
-//          pos -= 10;                    //    count down
-//        }
-//        else {
-//          pos += 10;                    //    Otherwise increment up
-//        }       
-//      }
-//                                       // Servo direction is down if it wasn't up before
-//      if(pos <=0) {                    //    did it hit the lower limit?
-//        servo_direction_up = 1;        //    reverse the direction and go up
-//        pos += 10;                      //    count up
-//      }
-//      else {
-//        pos -= 10;                      //    Otherwise decrement down   
-//      }
-//      
-//      myservo.write(pos);
-//TESTING
+
     }
   }  // End of the inner loop if sound is not playing
+     // Stuff that follows outside this loop will run while it is playing
+ // START TESTING EYE BLINK
+      unsigned long currentMillis = millis();
+      if(currentMillis - previousMillis > interval) {
+        // save the last time you blinked the LED 
+        previousMillis = currentMillis;   
+        // if the LED is off turn it on and vice-versa:
+        if (ledState == LOW)
+          ledState = HIGH;
+        else
+          ledState = LOW;
+        // set the LED with the ledState of the variable:
+        digitalWrite(eye_led1, ledState);
+        digitalWrite(eye_led2, ledState);
+      }
+  // END TESTING EYE BLINK
+  
+  // START TESTING HAND WAVE
+      if (servo_direction_up == 1) {   // Servo direction is up for this case
+        if(pos_ms >=MAX_PULSE){                 //    and it hit the upper limit
+          servo_direction_up = 0;      //    reverse the direction to go down
+          pos_ms = pos_ms - 50;                    //    count down
+        }
+        else {
+          pos_ms = pos_ms + 50;                    //    Otherwise increment up
+        }       
+      }
+                                       // Servo direction is down if it wasn't up before
+      if(pos_ms <=MIN_PULSE) {                    //    did it hit the lower limit?
+        servo_direction_up = 1;        //    reverse the direction and go up
+        pos_ms = pos_ms + 50;                      //    count up
+      }
+      else {
+        pos_ms = pos_ms - 50;                      //    Otherwise decrement down   
+      }
+      
+      myservo.write(pos_ms);
+  // END TESTING HAND WAVE
+
 
 }
