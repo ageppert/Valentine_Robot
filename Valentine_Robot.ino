@@ -1,3 +1,6 @@
+// Valentine's Day Robot Project
+// V1.0
+
 #include <SD.h>              // SD Card library
 #include <SPI.h>             // needed for SD card?
 #include <TMRpcm.h>          // audio file player, unsigned 8-bit PCM, 8000/11025/16000kHz, mono
