@@ -4,6 +4,7 @@
 //      Enabled flashing LED eyes during playback
 //      Enabled waving sweep during playback, but it is not working.
 //      Most likely because audio library disables other interrupts during playback, include servo2
+// V1.2 Fixed servo sweep code! No conflict with audio timer. Fixed logic that occurs during playback.
 
 #include <SD.h>              // SD Card library
 #include <SPI.h>             // needed for SD card?
@@ -47,8 +48,8 @@ int ledState = LOW;             // ledState used to set the LEDs
 int pos = 70;                   // initial and then current servo position (degrees)
 int pos_ms = 1200;              // initial and then current servo position (ms)
 boolean servo_direction_up = 1; // keep track of which direction the servo is moving
-#define MIN_PULSE  750
-#define MAX_PULSE  2250
+#define MIN_PULSE  800
+#define MAX_PULSE  2200
 
 /**** OBJECTS   ****/
 TMRpcm tmrpcm;   // create an object for use in this sketch
@@ -61,7 +62,8 @@ void setup(){
   pinMode(sensor1, INPUT);  // 
 
   myservo.attach(servo1_pin);  // attaches the servo on pin 9 to the servo object 
-  myservo.write(pos_ms);
+  myservo.write(2000);
+  delay(250);
   
   Serial.begin(9600);
   if (!SD.begin(SD_ChipSelectPin)) {  // see if the card is present and can be initialized:
@@ -71,7 +73,8 @@ void setup(){
   tmrpcm.setVolume(6);
   tmrpcm.play("power-on.wav"); //the sound file "music" will play each time the arduino powers up, or is reset
   digitalWrite(eye_led1, HIGH); 
-  digitalWrite(eye_led2, HIGH); 
+  digitalWrite(eye_led2, HIGH);
+  delay(1200); 
 }
 
 
@@ -90,17 +93,18 @@ void loop(){
     //tmrpcm.disable();
     digitalWrite(eye_led1, LOW); 
     digitalWrite(eye_led2, LOW);
-    //myservo.write(1000);
+    myservo.write(1200);
     sensor1State = digitalRead(sensor1);
     if(sensor1State == 0){                 //  If the sensor indicates blocking, then start sound/lights
       digitalWrite(eye_led1, HIGH); 
       digitalWrite(eye_led2, HIGH); 
-      myservo.write(2000);
-      delay(500);
+      //myservo.write(2000);
+      //delay(500);
       tmrpcm.play("happy2.wav");
 
     }
   }  // End of the inner loop if sound is not playing
+  else {
      // Stuff that follows outside this loop will run while it is playing
  // START TESTING EYE BLINK
       unsigned long currentMillis = millis();
@@ -122,23 +126,24 @@ void loop(){
       if (servo_direction_up == 1) {   // Servo direction is up for this case
         if(pos_ms >=MAX_PULSE){                 //    and it hit the upper limit
           servo_direction_up = 0;      //    reverse the direction to go down
-          pos_ms = pos_ms - 50;                    //    count down
+          pos_ms = pos_ms - 1;                    //    count down
         }
         else {
-          pos_ms = pos_ms + 50;                    //    Otherwise increment up
+          pos_ms = pos_ms + 1;                    //    Otherwise increment up
         }       
       }
-                                       // Servo direction is down if it wasn't up before
+      else {              /**/                   // Servo direction is down if it wasn't up before
       if(pos_ms <=MIN_PULSE) {                    //    did it hit the lower limit?
         servo_direction_up = 1;        //    reverse the direction and go up
-        pos_ms = pos_ms + 50;                      //    count up
+        pos_ms = pos_ms + 1;                      //    count up
       }
       else {
-        pos_ms = pos_ms - 50;                      //    Otherwise decrement down   
+        pos_ms = pos_ms - 1;                      //    Otherwise decrement down   
       }
-      
+      }
       myservo.write(pos_ms);
+      delayMicroseconds(150);
   // END TESTING HAND WAVE
-
+  }
 
 }
