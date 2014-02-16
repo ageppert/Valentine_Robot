@@ -147,3 +147,22 @@ void loop(){
   }
 
 }
+
+// ALTERNATE SERVO SWEEP TO TRY
+//      if(pos_ms <=MIN_PULSE) {                    //    did it hit the lower limit?
+//        servo_direction_up = 1;        //    reverse the direction and go up
+//      }
+//      if(pos_ms >=MAX_PULSE){                 //    and it hit the upper limit
+//          servo_direction_up = 0;      //    reverse the direction to go down
+//          }
+//
+//      if (servo_direction_up == 1) {   // Servo direction is up for this case
+//        pos_ms = pos_ms + 1;
+//        }
+//      if (servo_direction_up == 0) {  
+//        pos_ms = pos_ms - 1;
+//        }
+//   delayMicroseconds(150);
+//      myservo.write(pos_ms);
+//
+
